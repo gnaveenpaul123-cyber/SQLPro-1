@@ -166,4 +166,58 @@ when sum(amount) > 150 then 'High Value'
 when sum(amount) < 50 then 'low value'
 end as segment
 from payment
-group by customer_id
+group by customer_id;
+
+--Top 5 cities by revenue?
+
+select ci.city, sum(p.amount) as total_revenue
+from payment p
+join rental r on p.rental_id = r.rental_id
+join inventory i on r.inventory_id = i.inventory_id
+join store s on i.store_id = s.store_id
+join address a on s.address_id = a.address_id
+join city ci on a.city_id = ci.city_id
+group by ci.city
+order by total_revenue desc
+limit 5;
+
+-- Repeat vs one-time customers
+
+select
+    case
+        when count(r.rental_id) = 1 then 'one-time'
+        else 'repeat'
+    end as customer_type,
+    count(*) as customer_count
+from customer c
+left join rental r on c.customer_id = r.customer_id
+group by customer_type;
+
+--: Most rented film per category
+
+select c.name as category, f.title, count(r.rental_id) as rentals
+from category c
+join film_category fc on c.category_id = fc.category_id
+join film f on fc.film_id = f.film_id
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+group by c.name, f.title
+having count(r.rental_id) = (
+    select max(rental_count)
+    from (
+        select count(r2.rental_id) as rental_count
+        from film_category fc2
+        join inventory i2 on fc2.film_id = i2.film_id
+        join rental r2 on i2.inventory_id = r2.inventory_id
+        where fc2.category_id = c.category_id
+        group by fc2.film_id
+    ) sub
+)
+order by c.name;
+
+--Store-wise customer count
+
+select s.store_id, count(c.customer_id) as total_customers
+from store s
+join customer c on s.store_id = c.store_id
+group by s.store_id;
